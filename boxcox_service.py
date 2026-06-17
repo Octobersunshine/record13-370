@@ -8,6 +8,7 @@ import warnings
 class BoxCoxTransform:
     def __init__(self, lambda_value: Optional[float] = None):
         self.lambda_value = lambda_value
+        self._lambda_user_provided = lambda_value is not None
         self.shift = 0.0
         self._is_fitted = False
 
@@ -37,9 +38,10 @@ class BoxCoxTransform:
         if add_shift:
             data = self._auto_shift(data)
         else:
+            self.shift = 0.0
             self._validate_positive(data)
 
-        if self.lambda_value is None:
+        if not self._lambda_user_provided:
             self.lambda_value = stats.boxcox_normmax(data, method=method)
 
         self._is_fitted = True
@@ -156,6 +158,7 @@ class BoxCoxVisualizer:
     @staticmethod
     def plot_lambda_search(
         data: np.ndarray,
+        add_shift: bool = True,
         figsize: Tuple[int, int] = (10, 6)
     ) -> None:
         try:
@@ -164,6 +167,13 @@ class BoxCoxVisualizer:
             raise ImportError("可视化功能需要安装 matplotlib: pip install matplotlib")
 
         data = np.asarray(data, dtype=float).flatten()
+
+        if add_shift:
+            min_val = np.min(data)
+            if min_val <= 0:
+                shift = abs(min_val) + 1e-8
+                data = data + shift
+
         lmd_range = np.linspace(-2, 2, 100)
         llf_values = []
 
